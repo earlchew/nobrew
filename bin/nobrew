@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# Disable brew
+#
+# This script is particularly useful for disabling brew(1) when building
+# versions of Python via pyenv.
+
+say()
+{
+    printf '%s\n' "$1"
+}
+
+usage()
+{
+    {
+        say "usage: ${0##*/} [ cmd ... ]"
+        say "example:"
+        say "  ${0##*/} pyenv install 2.7.10"
+    } >&2
+    exit 1
+}
+
+resolvepath()
+{
+    while : ; do
+        set -- "$(dirname "$1")" "$(basename "$1")"
+        set -- "$1" "$2" "$(cd "$1" && readlink "$2")"
+
+        [ -z "${3##/*}" ] || set -- "$1" "$2" "$(cd "$1" && pwd -P)/$3"
+
+        set -- "$3"
+        [ -h "$1" ] || break
+
+    done
+    say "$1"
+}
+
+abspath()
+{
+    set -- "$(dirname "$1")" "$(basename "$1")"
+    set -- "$(cd "$1" && pwd -P)/$2"
+    say "$1"
+}
+
+[ -z "${0##/*}" ] || exec "$PWD/$0" "$@"
+[ ! -h "$0" ] || exec "$(resolvepath "$0")" "$@"
+[ -n "${0##*/./*}" -a -n "${0##*/../*}" ] || exec "$(abspath "$0")" "$@"
+
+[ $# -lt 1 ] || [ -n "$1" -a -n "${1##-*}" ] || usage
+
+[ $# -eq 0 ] || set -- exec "$@"
+
+PATH="$(abspath "${0%/*}/../libexec")${PATH+:$PATH}" "$@"
