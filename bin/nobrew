@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -eu
+
 # Disable brew
 #
 # This script is particularly useful for disabling brew(1) when building
@@ -35,19 +37,36 @@ resolvepath()
     say "$1"
 }
 
-abspath()
+canonicalpath()
 {
     set -- "$(dirname "$1")" "$(basename "$1")"
     set -- "$(cd "$1" && pwd -P)/$2"
     say "$1"
 }
 
+# Clean up path
+#
+# Resolve the absolute path of this script, then resolve all symlink
+# references to find the absolute path to the underlying file. If the
+# result has any dotted components, clean up the path by retrieving
+# its canonical form.
+
 [ -z "${0##/*}" ] || exec "$PWD/$0" "$@"
 [ ! -h "$0" ] || exec "$(resolvepath "$0")" "$@"
-[ -n "${0##*/./*}" -a -n "${0##*/../*}" ] || exec "$(abspath "$0")" "$@"
+[ -n "${0##*/./*}" -a -n "${0##*/../*}" ] || exec "$(canonicalpath "$0")" "$@"
+
+# Check for supported options
+#
+# Presently there are no supported options, and any option (in particular
+# -h or --help) will trigger the usage summary.
 
 [ $# -lt 1 ] || [ -n "$1" -a -n "${1##-*}" ] || usage
 
+# Insert proxy brew(1)
+#
+# Find the path to the proxy brew command, then execute the program
+# named on the command line.
+
 [ $# -eq 0 ] || set -- exec "$@"
 
-PATH="$(abspath "${0%/*}/../libexec")${PATH+:$PATH}" "$@"
+PATH="$(canonicalpath "${0%/*}/../libexec")${PATH+:$PATH}" "$@"
